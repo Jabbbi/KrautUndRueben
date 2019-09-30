@@ -1,10 +1,12 @@
 package net.KrautUndRueben.krautundrueben
 
+import android.content.Intent
 import android.database.MatrixCursor
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.view.Menu
-import android.view.MenuItem
+import android.view.View
 import androidx.appcompat.widget.SearchView
 import androidx.core.view.MenuItemCompat
 import com.mapbox.android.core.permissions.PermissionsListener
@@ -19,16 +21,33 @@ import com.mapbox.mapboxsdk.location.modes.CameraMode.TRACKING_GPS
 import com.mapbox.mapboxsdk.location.modes.RenderMode
 import com.mapbox.mapboxsdk.maps.MapboxMap
 import com.mapbox.mapboxsdk.maps.Style
-import com.mapbox.mapboxsdk.plugins.annotation.SymbolManager
 
 
-import com.mapbox.mapboxsdk.plugins.annotation.SymbolOptions
-import com.mapbox.mapboxsdk.style.layers.Property
 import kotlinx.android.synthetic.main.activity_main.*
-import android.widget.ArrayAdapter
+import com.google.gson.Gson
+import com.mapbox.mapboxsdk.plugins.annotation.*
+import net.KrautUndRueben.krautundrueben.HTTPClient.HTTPClient
+import net.KrautUndRueben.krautundrueben.HTTPClient.MarketPlace
+import android.view.MenuItem
+import java.util.*
+import kotlin.collections.HashMap
+import kotlin.concurrent.schedule
 
 
-class MainActivity : AppCompatActivity(), PermissionsListener {
+class MainActivity : AppCompatActivity(), PermissionsListener
+    { companion object {
+        val IMG_BACKWAREN = "IMG_BACKWAREN"
+        val IMG_FEINKOST = "IMG_FEINKOST"
+        val IMG_FISCH = "IMG_FIISCH"
+        val IMG_FLEISCHWAREN = "IMG_FLEISCHWAREN"
+        val IMG_GARTEN = "IMG_GARTEN"
+        val IMG_GETRAENKE = "IMG_GETRAENKE"
+        val IMG_MILCHPRODUKTE = "IMG_MILCHPRODUKTE"
+        val IMG_OBST = "IMG_OBST"
+        val IMG_SONSTIGE = "IMG_SONSTIGE"
+        val IMG_SUESWAREN = "IMG_SUESWAREN"
+    }
+
     override fun onExplanationNeeded(permissionsToExplain: MutableList<String>?) {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
@@ -38,11 +57,26 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
     }
 
 
+
     private var mapboxMap: MapboxMap? = null
     private var symbolManager: SymbolManager? = null
+    private var fillManager: FillManager? = null
+    private var marketPlaces: List<MarketPlace>? = null
+    private var symbolLatLngToMarketPlace: HashMap<LatLng, MarketPlace> = HashMap();
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        HTTPClient(this).getMarketPlaces {
+            this.marketPlaces = marketPlaces
+        }
+
+        var marketplace: MarketPlace? = null
+        if (intent.extras != null) {
+            marketplace = Gson().fromJson(intent.extras!!.getString("marketplace"), MarketPlace::class.java)
+        }
+
+
 
         Mapbox.getInstance(
             this,
@@ -50,9 +84,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
         )
         setContentView(R.layout.activity_main)
 
-
-        btn_to_own_location.setOnClickListener { it ->
-
+        btn_to_own_location.setOnClickListener {
             this.mapboxMap!!.cameraPosition = CameraPosition.Builder()
                 .zoom(16.0)
                 .tilt(20.0)
@@ -62,38 +94,64 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
 
         val permissionsManager = PermissionsManager(this)
         if (PermissionsManager.areLocationPermissionsGranted(this)) {
-            mapView?.onCreate(savedInstanceState)
+            map?.onCreate(savedInstanceState)
 
-            mapView?.getMapAsync { mapboxMap ->
+            map?.getMapAsync { mapboxMap ->
 
                 this.mapboxMap = mapboxMap
                 mapboxMap.cameraPosition = CameraPosition.Builder()
                     .target(LatLng(51.962501, 7.625561))
-                    .zoom(12.0)
-                    .tilt(20.0)
-                    .bearing(90.0)
+                    .zoom(16.0)
+                    .tilt(22.0)
+                    .bearing(270.0)
                     .build()
                 mapboxMap.setStyle(Style.MAPBOX_STREETS) { style ->
 
-
-                    symbolManager = SymbolManager(mapView!!, mapboxMap, style)
+                    symbolManager = SymbolManager(map!!, mapboxMap, style)
                     symbolManager!!.setIconAllowOverlap(true)
                     symbolManager!!.setTextAllowOverlap(true)
 
-                    // createMarketImage(style)
 
                     style.addImage(
-                        "hallo",
-                        getDrawable(R.drawable.marktplatz)!!
+                        IMG_BACKWAREN,
+                        getDrawable(R.drawable.backwaren_04)!!
                     )
-
-                    val point =
-                    symbolManager!!.create(
-                        SymbolOptions()
-                            .withLatLng(LatLng(51.962494, 7.625583))
-                            .withIconImage("hallo")
-                            .withIconSize(0.1.toFloat()))
-
+                    style.addImage(
+                        IMG_FEINKOST,
+                        getDrawable(R.drawable.feinkost_07)!!
+                    )
+                    style.addImage(
+                        IMG_FISCH,
+                        getDrawable(R.drawable.fisch_11)!!
+                    )
+                    style.addImage(
+                        IMG_FLEISCHWAREN,
+                        getDrawable(R.drawable.fleischwaren_09)!!
+                    )
+                    style.addImage(
+                        IMG_GETRAENKE,
+                        getDrawable(R.drawable.getraenke_02)!!
+                    )
+                    style.addImage(
+                        IMG_MILCHPRODUKTE,
+                    getDrawable(R.drawable.milchprodukte_08)!!
+                    )
+                    style.addImage(
+                        IMG_SONSTIGE,
+                        getDrawable(R.drawable.sonstiges_06)!!
+                    )
+                    style.addImage(
+                        IMG_SUESWAREN,
+                        getDrawable(R.drawable.suesswaren_05)!!
+                    )
+                    style.addImage(
+                        IMG_OBST,
+                        getDrawable(R.drawable.obst_03)!!
+                    )
+                    style.addImage(
+                        IMG_GARTEN,
+                        getDrawable(R.drawable.garten_10)!!
+                    )
 
                     val locationComponentOptions = LocationComponentOptions.builder(this)
                         .build()
@@ -103,14 +161,80 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
                         .locationComponentOptions(locationComponentOptions)
                         .build()
 
-                    val locationComponent = mapboxMap.locationComponent
                     this.mapboxMap!!.locationComponent.activateLocationComponent(
                         locationComponentActivationOptions
                     )
 
+                    fillManager = FillManager(map!!, mapboxMap, style)
+
+                    symbolManager!!.addClickListener {
+
+                        val marketplace = symbolLatLngToMarketPlace[it.latLng]
+
+                        txt_map_name.visibility = View.VISIBLE
+                        btn_back.visibility = View.VISIBLE
+                        btn_get_info.visibility = View.VISIBLE
+                        txt_map_name.text = marketplace!!.name
+                        txt_map_name.bringToFront()
+
+                        btn_get_info.setOnClickListener {
+                            txt_map_name.visibility = View.INVISIBLE
+                            btn_back.visibility = View.INVISIBLE
+                            btn_get_info.visibility = View.INVISIBLE
+
+                            val i = Intent(this, MarketPlaceInfo::class.java)
+                            val b = Bundle()
+                            b.putString("json", Gson().toJson(marketplace))
+                            i.putExtras(b)
+                            this.startActivity(i)
+                        }
+
+                        btn_back.setOnClickListener {
+                            txt_map_name.visibility = View.INVISIBLE
+                            btn_back.visibility = View.INVISIBLE
+                            btn_get_info.visibility = View.INVISIBLE
+                        }
+                    }
+
+                    HTTPClient(this).getMarketPlaces {
+                        marketPlaces = it
+                        for (marketPlace in it) {
+                            val stuff = marketPlace.getLatLngs()
+
+                            fillManager!!.create(
+                                FillOptions()
+                                    .withLatLngs(stuff)
+                                    .withFillColor("rgba(255,0,0,0.1)")
+                                    .withFillOutlineColor("rgba(255,0,0,1)")
+                            )
+                            Log.d("Coards",stuff.toString())
+
+                            val centerCords = badCenterOfLatNng(stuff[0])
+
+                            symbolLatLngToMarketPlace[centerCords] = marketPlace
+
+                            symbolManager!!.create(
+                                SymbolOptions()
+                                    .withIconSize(0.1.toFloat())
+                                    .withIconImage(marketPlace.getDrawable(this))
+                                    .withLatLng(centerCords)
+                            )
+                        }
+                    }
+
+                    if(marketplace != null) {
+                        mapboxMap.cameraPosition = CameraPosition.Builder()
+                            .target(LatLng(badCenterOfLatNng(marketplace!!.getLatLngs()[0])))
+                            .zoom(20.0)
+                            .tilt(27.0)
+                            .bearing(270.0)
+                            .build()
+                    }
+
                     enableLocationComponent(style)
                 }
             }
+
         } else {
             permissionsManager.requestLocationPermissions(this);
         }
@@ -129,14 +253,16 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
             }
 
             override fun onQueryTextChange(s: String): Boolean {
-                    val cursor = MatrixCursor(arrayOf("_id", "suggest_text_1"));
-                    cursor.addRow(arrayOf("0", "Murica"))
-                cursor.addRow(arrayOf("1", "Murica"))
-                cursor.addRow(arrayOf("2", "Murica"))
-                cursor.addRow(arrayOf("3", "Murica"))
-                cursor.addRow(arrayOf("4", "Murica"))
 
-                searchView.suggestionsAdapter = SuggestionCursorAdapter(applicationContext, cursor)
+                val cursor = MatrixCursor(arrayOf("_id", "suggest_text_1"));
+                for (element in marketPlaces!!.iterator()) {
+                    if (element.name!!.contains(s, ignoreCase = true)) {
+                        cursor.addRow(arrayOf("0", Gson().toJson(element)))
+                    }
+                }
+
+                val sca = SuggestionCursorAdapter(applicationContext, cursor)
+                searchView.suggestionsAdapter = sca
                 return true
             }
         })
@@ -144,27 +270,33 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
         return super.onCreateOptionsMenu(menu);
     }
 
-    private fun createMarketImage(style: Style) {
-        style.addImage(
-            "hallo",
-            getDrawable(R.drawable.marktplatz)!!
-        )
+    /*
 
-        val symbolManager = SymbolManager(mapView, mapboxMap!! ,style)
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.getItemId()) {
+            R.id.checkable_menu -> {
+                val isChecked = !item.isChecked()
+                item.setChecked(isChecked)
+                return true
+            }
+            else -> return false
+        }
+    }
 
+     */
 
-        // set non-data-driven properties, such as:
-        symbolManager?.iconAllowOverlap = true
-        symbolManager?.iconTranslate = arrayOf(-4f, 5f)
-        symbolManager?.iconRotationAlignment = Property.ICON_ROTATION_ALIGNMENT_MAP
+    private fun badCenterOfLatNng(latngs: List<LatLng>): LatLng {
 
-        symbolManager!!.create(
-            SymbolOptions()
-                .withIconImage("hallo")
-                .withLatLng(LatLng(51.962501, 7.625561))
-                .withIconRotate(12.2.toFloat())
-                .withIconSize(0.1.toFloat())
-        )
+        var long_sum = 0.0
+        var lat_sum = 0.0
+
+        for (element in latngs) {
+            lat_sum += element.latitude
+            long_sum += element.longitude
+        }
+        var lat_avg = lat_sum / latngs.size
+        var long_avg = long_sum / latngs.size
+        return LatLng(lat_avg, long_avg)
     }
 
     private fun enableLocationComponent(style: Style) {
@@ -182,22 +314,18 @@ class MainActivity : AppCompatActivity(), PermissionsListener {
             locationComponent?.isLocationComponentEnabled = true
 
             // Set the component's camera mode
-            locationComponent?.cameraMode = CameraMode.TRACKING
 
             // Set the component's render mode
             locationComponent?.renderMode = RenderMode.COMPASS
             locationComponent?.isLocationComponentEnabled = true
 
-
         } else {
-
             val permissionsManager = PermissionsManager(this)
 
             permissionsManager?.requestLocationPermissions(this)
 
         }
     }
-
 }
 
 

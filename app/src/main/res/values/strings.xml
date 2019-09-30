@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">KrautUndRueben</string>
+
+    <string-array name="katogories">
+        <item>Backwaren</item>
+        <item></item>
+    </string-array>
 </resources>
